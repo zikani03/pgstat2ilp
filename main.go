@@ -100,71 +100,72 @@ func (p *pgStatStatementsRow) Tags() map[string]string {
 	tags["userid"] = fmt.Sprintf("%d", p.userid)
 	tags["dbid"] = fmt.Sprintf("%d", p.dbid)
 	tags["queryid"] = fmt.Sprintf("%d", p.queryid.Int64)
-	tags["query"] = p.query.String
+	addNullStringTag(tags, "query", p.query)
+
 	return tags
 }
 
 func (p *pgStatStatementsRow) Fields() map[string]interface{} {
 	fields := make(map[string]interface{})
-	fields["plans"] = p.plans.Int64
-	fields["total_plan_time"] = p.total_plan_time.Float64
-	fields["min_plan_time"] = p.min_plan_time.Float64
-	fields["max_plan_time"] = p.max_plan_time.Float64
-	fields["mean_plan_time"] = p.mean_plan_time.Float64
-	fields["stddev_plan_time"] = p.stddev_plan_time.Float64
-	fields["calls"] = p.calls.Int64
-	fields["total_exec_time"] = p.total_exec_time.Float64
-	fields["min_exec_time"] = p.min_exec_time.Float64
-	fields["max_exec_time"] = p.max_exec_time.Float64
-	fields["mean_exec_time"] = p.mean_exec_time.Float64
-	fields["stddev_exec_time"] = p.stddev_exec_time.Float64
-	fields["rows"] = p.rows.Int64
-	fields["shared_blks_hit"] = p.shared_blks_hit.Int64
-	fields["shared_blks_read"] = p.shared_blks_read.Int64
-	fields["shared_blks_dirtied"] = p.shared_blks_dirtied.Int64
-	fields["shared_blks_written"] = p.shared_blks_written.Int64
-	fields["local_blks_hit"] = p.local_blks_hit.Int64
-	fields["local_blks_read"] = p.local_blks_read.Int64
-	fields["local_blks_dirtied"] = p.local_blks_dirtied.Int64
-	fields["local_blks_written"] = p.local_blks_written.Int64
-	fields["temp_blks_read"] = p.temp_blks_read.Int64
-	fields["temp_blks_written"] = p.temp_blks_written.Int64
-	fields["blk_read_time"] = p.blk_read_time.Float64
-	fields["blk_write_time"] = p.blk_write_time.Float64
-	fields["wal_records"] = p.wal_records.Int64
-	fields["wal_fpi"] = p.wal_fpi.Int64
-	fields["wal_bytes"] = p.wal_bytes.Int64
+	addNullInt64Field(fields, "plans", p.plans)
+	addNullFloat64Field(fields, "total_plan_time", p.total_plan_time)
+	addNullFloat64Field(fields, "min_plan_time", p.min_plan_time)
+	addNullFloat64Field(fields, "max_plan_time", p.max_plan_time)
+	addNullFloat64Field(fields, "mean_plan_time", p.mean_plan_time)
+	addNullFloat64Field(fields, "stddev_plan_time", p.stddev_plan_time)
+	addNullInt64Field(fields, "calls", p.calls)
+	addNullFloat64Field(fields, "total_exec_time", p.total_exec_time)
+	addNullFloat64Field(fields, "min_exec_time", p.min_exec_time)
+	addNullFloat64Field(fields, "max_exec_time", p.max_exec_time)
+	addNullFloat64Field(fields, "mean_exec_time", p.mean_exec_time)
+	addNullFloat64Field(fields, "stddev_exec_time", p.stddev_exec_time)
+	addNullInt64Field(fields, "rows", p.rows)
+	addNullInt64Field(fields, "shared_blks_hit", p.shared_blks_hit)
+	addNullInt64Field(fields, "shared_blks_read", p.shared_blks_read)
+	addNullInt64Field(fields, "shared_blks_dirtied", p.shared_blks_dirtied)
+	addNullInt64Field(fields, "shared_blks_written", p.shared_blks_written)
+	addNullInt64Field(fields, "local_blks_hit", p.local_blks_hit)
+	addNullInt64Field(fields, "local_blks_read", p.local_blks_read)
+	addNullInt64Field(fields, "local_blks_dirtied", p.local_blks_dirtied)
+	addNullInt64Field(fields, "local_blks_written", p.local_blks_written)
+	addNullInt64Field(fields, "temp_blks_read", p.temp_blks_read)
+	addNullInt64Field(fields, "temp_blks_written", p.temp_blks_written)
+	addNullFloat64Field(fields, "blk_read_time", p.blk_read_time)
+	addNullFloat64Field(fields, "blk_write_time", p.blk_write_time)
+	addNullInt64Field(fields, "wal_records", p.wal_records)
+	addNullInt64Field(fields, "wal_fpi", p.wal_fpi)
+	addNullInt64Field(fields, "wal_bytes", p.wal_bytes)
 	return fields
 }
 
 func (p *pgStatActivityRow) Tags() map[string]string {
 	tags := make(map[string]string, 10)
-	tags["datid"] = p.Datid.String
-	tags["datname"] = p.Datname.String
-	tags["usesysid"] = p.Usesysid.String
-	tags["usename"] = p.Usename.String
-	tags["application_name"] = p.ApplicationName.String
-	tags["client_addr"] = p.ClientAddr.String
-	tags["client_hostname"] = p.ClientHostname.String
-	tags["wait_event_type"] = p.WaitEventType.String
-	tags["wait_event"] = p.WaitEvent.String
-	tags["state"] = p.State.String
-	tags["backend_xid"] = p.BackendXID.String
-	tags["backend_xmin"] = p.BackendXmin.String
-	tags["query"] = p.Query.String
-	tags["backend_type"] = p.BackendType.String
+	addNullStringTag(tags, "datid", p.Datid)
+	addNullStringTag(tags, "datname", p.Datname)
+	addNullStringTag(tags, "usesysid", p.Usesysid)
+	addNullStringTag(tags, "usename", p.Usename)
+	addNullStringTag(tags, "application_name", p.ApplicationName)
+	addNullStringTag(tags, "client_addr", p.ClientAddr)
+	addNullStringTag(tags, "client_hostname", p.ClientHostname)
+	addNullStringTag(tags, "wait_event_type", p.WaitEventType)
+	addNullStringTag(tags, "wait_event", p.WaitEvent)
+	addNullStringTag(tags, "state", p.State)
+	addNullStringTag(tags, "backend_xid", p.BackendXID)
+	addNullStringTag(tags, "backend_xmin", p.BackendXmin)
+	addNullStringTag(tags, "query", p.Query)
+	addNullStringTag(tags, "backend_type", p.BackendType)
+
 	return tags
 }
 
 func (p *pgStatActivityRow) Fields() map[string]interface{} {
-	fields := make(map[string]interface{}, 10)
-
-	fields["client_port"] = p.ClientPort
-	fields["pid"] = p.Pid
-	fields["leader_pid"] = p.LeaderPID
-	fields["backend_start"] = p.BackendStart.Time.UnixNano()
-	fields["backend_xact_start"] = p.XactStart.Time.UnixNano()
-	fields["backend_xact_start"] = p.XactStart.Time.UnixNano()
+	fields := make(map[string]interface{})
+	addNullInt64Field(fields, "client_port", p.ClientPort)
+	addNullInt64Field(fields, "pid", p.Pid)
+	addNullInt64Field(fields, "leader_pid", p.LeaderPID)
+	addNullTimeField(fields, "backend_start", p.BackendStart)
+	addNullTimeField(fields, "backend_xact_start", p.XactStart)
+	addNullTimeField(fields, "backend_xact_start", p.XactStart)
 
 	return fields
 }
@@ -335,5 +336,29 @@ func sendPgStatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
 			panic(err)
 		}
 		serializer.Encode(event)
+	}
+}
+
+func addNullStringTag(m map[string]string, fieldName string, value sql.NullString) {
+	if value.Valid {
+		m[fieldName] = value.String
+	}
+}
+
+func addNullInt64Field(m map[string]interface{}, fieldName string, value sql.NullInt64) {
+	if value.Valid {
+		m[fieldName] = value.Int64
+	}
+}
+
+func addNullFloat64Field(m map[string]interface{}, fieldName string, value sql.NullFloat64) {
+	if value.Valid {
+		m[fieldName] = value.Float64
+	}
+}
+
+func addNullTimeField(m map[string]interface{}, fieldName string, value pq.NullTime) {
+	if value.Valid {
+		m[fieldName] = value.Time.UnixNano()
 	}
 }
