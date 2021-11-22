@@ -17,9 +17,13 @@ import (
 const (
 	pgStatActivitySql = "SELECT datid, datname, pid, leader_pid, usesysid, usename, application_name, client_addr, client_hostname, client_port, backend_start, xact_start, query_start, state_change, wait_event_type, wait_event, state, backend_xid, backend_xmin, query, backend_type FROM pg_stat_activity"
 
-	pgStatStatementsSql = "SELECT userid, dbid, queryid, query, plans, total_plan_time, min_plan_time, max_plan_time, mean_plan_time, stddev_plan_time, calls, total_exec_time, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, blk_read_time, blk_write_time, wal_records, wal_fpi, wal_bytes FROM pg_stat_statements"
+	pg13StatStatementsSql = "SELECT userid, dbid, queryid, query, plans, total_plan_time, min_plan_time, max_plan_time, mean_plan_time, stddev_plan_time, calls, total_exec_time, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, blk_read_time, blk_write_time, wal_records, wal_fpi, wal_bytes FROM pg_stat_statements"
+
+	pg11StatStatementsSql = "SELECT userid, dbid, queryid, query, calls, total_time, min_time, max_time, mean_time, stddev_time, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, blk_read_time, blk_write_time FROM pg_stat_statements"
 
 	pgStatStatementsExtensionCheckSql = "SELECT exists(SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements');"
+
+	pgCheckVersion = "SELECT lower(version());"
 )
 
 var shutdownCh chan (struct{})
@@ -58,8 +62,70 @@ type pgStatActivityRow struct {
 	BackendType     sql.NullString
 }
 
-// pgStatStatementsRow a Postgres 13+ compatible struct for pg_stat_statements row
-type pgStatStatementsRow struct {
+// pg11StatStatementsRow a Postgres 11 compatible struct for pg_stat_statements row
+type pg11StatStatementsRow struct {
+	userid              pqoid.Oid       //	pg_authid.oid 	OID of user who executed the statement
+	dbid                pqoid.Oid       //	pg_database.oid 	OID of database in which the statement was executed
+	queryid             sql.NullInt64   //		 	  	Internal hash code, computed from the statement's parse tree
+	query               sql.NullString  //	 	  	Text of a representative statement
+	calls               sql.NullInt64   //	 	  	Number of times executed
+	total_time          sql.NullFloat64 //		 precision 	  	Total time spent in the statement, in milliseconds
+	min_time            sql.NullFloat64 //		 precision 	  	Minimum time spent in the statement, in milliseconds
+	max_time            sql.NullFloat64 //		 precision 	  	Maximum time spent in the statement, in milliseconds
+	mean_time           sql.NullFloat64 //		 precision 	  	Mean time spent in the statement, in milliseconds
+	stddev_time         sql.NullFloat64 //			 precision 	  	Population standard deviation of time spent in the statement, in milliseconds
+	rows                sql.NullInt64   //	 	  	Total number of rows retrieved or affected by the statement
+	shared_blks_hit     sql.NullInt64   //				 	  	Total number of shared block cache hits by the statement
+	shared_blks_read    sql.NullInt64   //				 	  	Total number of shared blocks read by the statement
+	shared_blks_dirtied sql.NullInt64   //					 	  	Total number of shared blocks dirtied by the statement
+	shared_blks_written sql.NullInt64   //					 	  	Total number of shared blocks written by the statement
+	local_blks_hit      sql.NullInt64   //			 	  	Total number of local block cache hits by the statement
+	local_blks_read     sql.NullInt64   //				 	  	Total number of local blocks read by the statement
+	local_blks_dirtied  sql.NullInt64   //				 	  	Total number of local blocks dirtied by the statement
+	local_blks_written  sql.NullInt64   //				 	  	Total number of local blocks written by the statement
+	temp_blks_read      sql.NullInt64   //			 	  	Total number of temp blocks read by the statement
+	temp_blks_written   sql.NullInt64   //				 	  	Total number of temp blocks written by the statement
+	blk_read_time       sql.NullFloat64 //			 precision 	  	Total time the statement spent reading blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
+	blk_write_time      sql.NullFloat64 //			 precision 	  	Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
+}
+
+func (p *pg11StatStatementsRow) Tags() map[string]string {
+	tags := make(map[string]string)
+	tags["userid"] = fmt.Sprintf("%d", p.userid)
+	tags["dbid"] = fmt.Sprintf("%d", p.dbid)
+	tags["queryid"] = fmt.Sprintf("%d", p.queryid.Int64)
+	addNullStringTag(tags, "query", p.query)
+
+	return tags
+}
+
+func (p *pg11StatStatementsRow) Fields() map[string]interface{} {
+	fields := make(map[string]interface{})
+	addNullInt64Field(fields, "calls", p.calls)
+	addNullFloat64Field(fields, "total_time", p.total_time)
+	addNullFloat64Field(fields, "min_time", p.min_time)
+	addNullFloat64Field(fields, "max_time", p.max_time)
+	addNullFloat64Field(fields, "mean_time", p.mean_time)
+	addNullFloat64Field(fields, "stddev_time", p.stddev_time)
+	addNullInt64Field(fields, "rows", p.rows)
+	addNullInt64Field(fields, "shared_blks_hit", p.shared_blks_hit)
+	addNullInt64Field(fields, "shared_blks_read", p.shared_blks_read)
+	addNullInt64Field(fields, "shared_blks_dirtied", p.shared_blks_dirtied)
+	addNullInt64Field(fields, "shared_blks_written", p.shared_blks_written)
+	addNullInt64Field(fields, "local_blks_hit", p.local_blks_hit)
+	addNullInt64Field(fields, "local_blks_read", p.local_blks_read)
+	addNullInt64Field(fields, "local_blks_dirtied", p.local_blks_dirtied)
+	addNullInt64Field(fields, "local_blks_written", p.local_blks_written)
+	addNullInt64Field(fields, "temp_blks_read", p.temp_blks_read)
+	addNullInt64Field(fields, "temp_blks_written", p.temp_blks_written)
+	addNullFloat64Field(fields, "blk_read_time", p.blk_read_time)
+	addNullFloat64Field(fields, "blk_write_time", p.blk_write_time)
+
+	return fields
+}
+
+// pg13StatStatementsRow a Postgres 13+ compatible struct for pg_stat_statements row
+type pg13StatStatementsRow struct {
 	userid              pqoid.Oid       // oid 	pg_authid.oid 	OID of user who executed the statement
 	dbid                pqoid.Oid       // oid 	pg_database.oid 	OID of database in which the statement was executed
 	queryid             sql.NullInt64   // sql.NullInt64 //  	  	Internal hash code, computed from the statement's parse tree
@@ -92,10 +158,9 @@ type pgStatStatementsRow struct {
 	wal_records         sql.NullInt64   // Total number of WAL records generated by the statement
 	wal_fpi             sql.NullInt64   // Total number of WAL full page images generated by the statement
 	wal_bytes           sql.NullInt64   // Total amount of WAL generated by the statement in bytes
-
 }
 
-func (p *pgStatStatementsRow) Tags() map[string]string {
+func (p *pg13StatStatementsRow) Tags() map[string]string {
 	tags := make(map[string]string)
 	tags["userid"] = fmt.Sprintf("%d", p.userid)
 	tags["dbid"] = fmt.Sprintf("%d", p.dbid)
@@ -105,7 +170,7 @@ func (p *pgStatStatementsRow) Tags() map[string]string {
 	return tags
 }
 
-func (p *pgStatStatementsRow) Fields() map[string]interface{} {
+func (p *pg13StatStatementsRow) Fields() map[string]interface{} {
 	fields := make(map[string]interface{})
 	addNullInt64Field(fields, "plans", p.plans)
 	addNullFloat64Field(fields, "total_plan_time", p.total_plan_time)
@@ -230,7 +295,6 @@ func main() {
 }
 
 func sendPgStatActivityMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
-
 	rows, err := db.Query(pgStatActivitySql)
 
 	if err != nil {
@@ -274,7 +338,6 @@ func sendPgStatActivityMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
 }
 
 func sendPgStatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
-
 	var pgStatStementsExtensionExists bool
 	err := db.QueryRow(pgStatStatementsExtensionCheckSql).Scan(&pgStatStementsExtensionExists)
 	if err != nil {
@@ -284,8 +347,22 @@ func sendPgStatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
 		fmt.Println("pg_stat_statements extension not available on the database server")
 		return
 	}
-	// the extension may be installed but not enabled in shared preload
-	rows, err := db.Query(pgStatStatementsSql)
+	var postgresqlVersion string
+	err = db.QueryRow(pgCheckVersion).Scan(&postgresqlVersion)
+	if err != nil {
+		return
+	}
+
+	if strings.Contains(postgresqlVersion, "postgres 11") {
+		sendPg11StatStatementsMetrics(db, serializer)
+	}
+	if strings.Contains(postgresqlVersion, "postgres 13") {
+		sendPg13StatStatementsMetrics(db, serializer)
+	}
+}
+
+func sendPg11StatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
+	rows, err := db.Query(pg11StatStatementsSql)
 	if err != nil {
 		fmt.Printf("Failed to read rows from pg_stat_statements. Got %v\n", err)
 		return
@@ -293,7 +370,53 @@ func sendPgStatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
 	defer rows.Close()
 
 	for rows.Next() {
-		r := &pgStatStatementsRow{}
+		r := &pg11StatStatementsRow{}
+		err = rows.Scan(
+			&r.userid,
+			&r.dbid,
+			&r.queryid,
+			&r.query,
+			&r.calls,
+			&r.total_time,
+			&r.min_time,
+			&r.max_time,
+			&r.mean_time,
+			&r.stddev_time,
+			&r.rows,
+			&r.shared_blks_hit,
+			&r.shared_blks_read,
+			&r.shared_blks_dirtied,
+			&r.shared_blks_written,
+			&r.local_blks_hit,
+			&r.local_blks_read,
+			&r.local_blks_dirtied,
+			&r.local_blks_written,
+			&r.temp_blks_read,
+			&r.temp_blks_written,
+			&r.blk_read_time,
+			&r.blk_write_time,
+		)
+		if err != nil {
+			panic(err)
+		}
+		event, err := lineprotocol.New("pg_stat_statements", r.Tags(), r.Fields(), time.Now())
+		if err != nil {
+			panic(err)
+		}
+		serializer.Encode(event)
+	}
+}
+
+func sendPg13StatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
+	rows, err := db.Query(pg13StatStatementsSql)
+	if err != nil {
+		fmt.Printf("Failed to read rows from pg_stat_statements. Got %v\n", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		r := &pg13StatStatementsRow{}
 		err = rows.Scan(
 			&r.userid,
 			&r.dbid,
