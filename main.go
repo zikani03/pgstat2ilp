@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -294,11 +295,11 @@ func main() {
 	}
 }
 
-func sendPgStatActivityMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
+func sendPgStatActivityMetrics(db *sql.DB, serializer *lineprotocol.Encoder) error {
 	rows, err := db.Query(pgStatActivitySql)
 
 	if err != nil {
-		panic(rows.Err())
+		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -327,45 +328,46 @@ func sendPgStatActivityMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
 			&statRow.BackendType,
 		)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		event, err := lineprotocol.New("pg_stat_activity", statRow.Tags(), statRow.Fields(), statRow.QueryStart.Time)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		serializer.Encode(event)
 	}
+	return nil
 }
 
-func sendPgStatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
+func sendPgStatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) error {
 	var pgStatStementsExtensionExists bool
 	err := db.QueryRow(pgStatStatementsExtensionCheckSql).Scan(&pgStatStementsExtensionExists)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if !pgStatStementsExtensionExists {
-		fmt.Println("pg_stat_statements extension not available on the database server")
-		return
+		return errors.New("pg_stat_statements extension not available on the database server")
 	}
 	var postgresqlVersion string
 	err = db.QueryRow(pgCheckVersion).Scan(&postgresqlVersion)
 	if err != nil {
-		return
+		return err
 	}
 
 	if strings.Contains(postgresqlVersion, "postgres 11") {
-		sendPg11StatStatementsMetrics(db, serializer)
+		return sendPg11StatStatementsMetrics(db, serializer)
+
 	}
 	if strings.Contains(postgresqlVersion, "postgres 13") {
-		sendPg13StatStatementsMetrics(db, serializer)
+		return sendPg13StatStatementsMetrics(db, serializer)
 	}
+	return nil
 }
 
-func sendPg11StatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
+func sendPg11StatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) error {
 	rows, err := db.Query(pg11StatStatementsSql)
 	if err != nil {
-		fmt.Printf("Failed to read rows from pg_stat_statements. Got %v\n", err)
-		return
+		return err
 	}
 	defer rows.Close()
 
@@ -397,21 +399,21 @@ func sendPg11StatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder)
 			&r.blk_write_time,
 		)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		event, err := lineprotocol.New("pg_stat_statements", r.Tags(), r.Fields(), time.Now())
 		if err != nil {
-			panic(err)
+			return err
 		}
 		serializer.Encode(event)
 	}
+	return nil
 }
 
-func sendPg13StatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) {
+func sendPg13StatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder) error {
 	rows, err := db.Query(pg13StatStatementsSql)
 	if err != nil {
-		fmt.Printf("Failed to read rows from pg_stat_statements. Got %v\n", err)
-		return
+		return err
 	}
 	defer rows.Close()
 
@@ -452,14 +454,15 @@ func sendPg13StatStatementsMetrics(db *sql.DB, serializer *lineprotocol.Encoder)
 			&r.wal_bytes,
 		)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		event, err := lineprotocol.New("pg_stat_statements", r.Tags(), r.Fields(), time.Now())
 		if err != nil {
-			panic(err)
+			return err
 		}
 		serializer.Encode(event)
 	}
+	return nil
 }
 
 func addNullStringTag(m map[string]string, fieldName string, value sql.NullString) {
